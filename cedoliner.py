@@ -122,32 +122,6 @@ def analizza_cedolino(pdf_path, anno, parole_chiave):#, pattern_codici):
                                                         #print("aggiungo "+riga.split()[-1])
                                                 else:
                                                     print("ERRORE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-    """
-    lettura delle righe estrazione ultimo valore, non si sa se ultimo valore è competenza o trattenuta
-    with pdfplumber.open(pdf_path) as pdf:
-        print("quindi scriviamo il mese di",mese,anno,pdf_path)
-        for page_num, page in enumerate(pdf.pages, start=1):
-            testo = page.extract_text()
-            if testo:
-                righe = testo.split("\n")
-                #print("prima cerco il mese e l'anno per ",pdf_path)
-                for riga in righe:
-                    #print("quindi procedo ad assegnare i risultati con mese:",mese)
-                    # Controlla se la riga contiene parole chiave
-                    if any(parola in riga for parola in parole_chiave):
-                        for parola in parole_chiave:
-                            if parola.lower() in riga.lower():
-                                risultati.append((page_num, mese, parola, riga.split()[-1]))
-                                print("ritorno:",page_num, mese, parola, riga.split()[-1])
-                                break
-                        #risultati.append((page_num, mese, parola, riga.split()[-1]))
-
-                    # Cerca pattern specifici
-                    #match = pattern_codici.search(riga)
-                    #if match:
-
-                    #    risultati.append((page_num, "Pattern trovato:", riga))"""
-
     return risultati
 
 
