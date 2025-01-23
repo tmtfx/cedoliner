@@ -75,11 +75,12 @@ def analizza_cedolino(pdf_path, anno, parole_chiave):#, pattern_codici):
     except Exception as e:
             print(f"Errore nell'analisi del cedolino {pdf_path}: {e}")
             ispdf=False
-    if not got_ref:
-        print("fallback - nome mese da nome file")
-        mese=os.path.basename(pdf_path).split()[0]
-    """questa parte cerca i codici e le colonne in cui son scritti"""
+    
     if ispdf:
+        if not got_ref:
+            print("fallback - nome mese da nome file")
+            mese=os.path.basename(pdf_path).split()[0]
+        """questa parte cerca i codici e le colonne in cui son scritti"""
         with pdfplumber.open(pdf_path) as pdf:
             for page_num, page in enumerate(pdf.pages, start=1):
                 testo = page.extract_text()
@@ -130,6 +131,8 @@ def analizza_cedolino(pdf_path, anno, parole_chiave):#, pattern_codici):
                                                     else:
                                                         print("ERRORE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
         return risultati
+    else:
+        return []
 
 
 # Ottieni la lista di tutti i file PDF nella cartella
