@@ -51,8 +51,8 @@ def analizza_cedolino(pdf_path, anno, parole_chiave):#, pattern_codici):
     ispdf=True
     """questa parte ricerca il mese e l'anno del cedolino"""
     print("analisi del cedolino",pdf_path)
-    with pdfplumber.open(pdf_path) as pdf:
-        try:
+    try:
+        with pdfplumber.open(pdf_path) as pdf:
             for page_num, page in enumerate(pdf.pages, start=1):
                 testo = page.extract_text()
                 if testo:
@@ -72,7 +72,7 @@ def analizza_cedolino(pdf_path, anno, parole_chiave):#, pattern_codici):
                                                 print("elaborazione di",mese,anno)
                                                 got_ref=True
                                                 break
-        except Exception as e:
+    except Exception as e:
             print(f"Errore nell'analisi del cedolino {pdf_path}: {e}")
             ispdf=False
     if not got_ref:
