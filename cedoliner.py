@@ -50,6 +50,7 @@ def analizza_cedolino(pdf_path, anno, parole_chiave):#, pattern_codici):
     mese = None
     ispdf=True
     """questa parte ricerca il mese e l'anno del cedolino"""
+    print("analisi del cedolino",pdf_path)
     with pdfplumber.open(pdf_path) as pdf:
         try:
             for page_num, page in enumerate(pdf.pages, start=1):
