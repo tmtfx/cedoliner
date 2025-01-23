@@ -48,81 +48,87 @@ def analizza_cedolino(pdf_path, anno, parole_chiave):#, pattern_codici):
     risultati = []
     got_ref=False
     mese = None
+    ispdf=True
     """questa parte ricerca il mese e l'anno del cedolino"""
     with pdfplumber.open(pdf_path) as pdf:
-        for page_num, page in enumerate(pdf.pages, start=1):
-            testo = page.extract_text()
-            if testo:
-                righe = testo.split("\n")
-                for riga in righe:
-                    if not got_ref:
-                        for parola in mese_anno_ref:
-                            if parola in riga:
-                                n=riga.find(parola)
-                                if n!=-1:
-                                    mese_anno=riga[n:]
-                                    if (mese_anno.split()[1]==anno)or(mese_anno[-4:]==anno):
-                                        n=len(parola)
-                                        mese=mese_anno[:n]
-                                        if pdf_path.lower().find(mese.lower())>-1:
-                                            #anno=mese_anno[n:]
-                                            print("elaborazione di",mese,anno)
-                                            got_ref=True
-                                            break
+        try:
+            for page_num, page in enumerate(pdf.pages, start=1):
+                testo = page.extract_text()
+                if testo:
+                    righe = testo.split("\n")
+                    for riga in righe:
+                        if not got_ref:
+                            for parola in mese_anno_ref:
+                                if parola in riga:
+                                    n=riga.find(parola)
+                                    if n!=-1:
+                                        mese_anno=riga[n:]
+                                        if (mese_anno.split()[1]==anno)or(mese_anno[-4:]==anno):
+                                            n=len(parola)
+                                            mese=mese_anno[:n]
+                                            if pdf_path.lower().find(mese.lower())>-1:
+                                                #anno=mese_anno[n:]
+                                                print("elaborazione di",mese,anno)
+                                                got_ref=True
+                                                break
+        except Exception as e:
+            print(f"Errore nell'analisi del cedolino {pdf_path}: {e}")
+            ispdf=False
     if not got_ref:
         print("fallback - nome mese da nome file")
         mese=os.path.basename(pdf_path).split()[0]
     """questa parte cerca i codici e le colonne in cui son scritti"""
-    with pdfplumber.open(pdf_path) as pdf:
-        for page_num, page in enumerate(pdf.pages, start=1):
-            testo = page.extract_text()
-            if testo:
-                righe = testo.split("\n")
-                for riga in righe:
-                    if any(parola in riga for parola in parole_chiave):
-                        for parola in parole_chiave:
-                            if parola.lower() in riga.lower():
-                                #recupero descrizione
-                                ns=riga.lower().find(parola.lower())+len(parola)
-                                ne=riga.find(" X ")
-                                if ne==-1:
-                                    ne=len(riga)-len(parola)
-                                descrizione=riga[:ne][ns:]
-                                #print(descrizione) 
-                                tables = page.extract_tables()
-                                if descrizione!="":
-                                    for table in tables:
-                                        for row in table:
-                                            i = 0
-                                            while i < len(row):
-                                                if row[i] is None:
-                                                    row.pop(i)
-                                                else:
-                                                    i += 1
-                                            if any(parola.lower() in cell.lower() for cell in row if cell):
-                                                #print("per il mese",mese,anno)
-                                                #print("array di row:",row)
-                                                if row[-1]:
-                                                    valore = row[-1]
-                                                    #print(row[-1])
-                                                    if riga.split()[-1] in valore.split("\n"):
-                                                        risultati.append((page_num, mese, parola, riga.split()[-1],descrizione))
-                                                        #print("aggiungo "+riga.split()[-1])
+    if ispdf:
+        with pdfplumber.open(pdf_path) as pdf:
+            for page_num, page in enumerate(pdf.pages, start=1):
+                testo = page.extract_text()
+                if testo:
+                    righe = testo.split("\n")
+                    for riga in righe:
+                        if any(parola in riga for parola in parole_chiave):
+                            for parola in parole_chiave:
+                                if parola.lower() in riga.lower():
+                                    #recupero descrizione
+                                    ns=riga.lower().find(parola.lower())+len(parola)
+                                    ne=riga.find(" X ")
+                                    if ne==-1:
+                                        ne=len(riga)-len(parola)
+                                    descrizione=riga[:ne][ns:]
+                                    #print(descrizione) 
+                                    tables = page.extract_tables()
+                                    if descrizione!="":
+                                        for table in tables:
+                                            for row in table:
+                                                i = 0
+                                                while i < len(row):
+                                                    if row[i] is None:
+                                                        row.pop(i)
                                                     else:
-                                                        risultati.append((page_num, mese, parola, "-"+riga.split()[-1],descrizione))
-                                                        #print("aggiungo -"+riga.split()[-1])
-                                                elif row[-2]:
-                                                    valore = row[-2]
-                                                    #print(row[-2])
-                                                    if riga.split()[-1] in valore.split("\n"):
-                                                        risultati.append((page_num, mese, parola, "-"+riga.split()[-1],descrizione))
-                                                        #print("aggiungo -"+riga.split()[-1])
+                                                        i += 1
+                                                if any(parola.lower() in cell.lower() for cell in row if cell):
+                                                    #print("per il mese",mese,anno)
+                                                    #print("array di row:",row)
+                                                    if row[-1]:
+                                                        valore = row[-1]
+                                                        #print(row[-1])
+                                                        if riga.split()[-1] in valore.split("\n"):
+                                                            risultati.append((page_num, mese, parola, riga.split()[-1],descrizione))
+                                                            #print("aggiungo "+riga.split()[-1])
+                                                        else:
+                                                            risultati.append((page_num, mese, parola, "-"+riga.split()[-1],descrizione))
+                                                            #print("aggiungo -"+riga.split()[-1])
+                                                    elif row[-2]:
+                                                        valore = row[-2]
+                                                        #print(row[-2])
+                                                        if riga.split()[-1] in valore.split("\n"):
+                                                            risultati.append((page_num, mese, parola, "-"+riga.split()[-1],descrizione))
+                                                            #print("aggiungo -"+riga.split()[-1])
+                                                        else:
+                                                            risultati.append((page_num, mese, parola, riga.split()[-1],descrizione))
+                                                            #print("aggiungo "+riga.split()[-1])
                                                     else:
-                                                        risultati.append((page_num, mese, parola, riga.split()[-1],descrizione))
-                                                        #print("aggiungo "+riga.split()[-1])
-                                                else:
-                                                    print("ERRORE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-    return risultati
+                                                        print("ERRORE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+        return risultati
 
 
 # Ottieni la lista di tutti i file PDF nella cartella
