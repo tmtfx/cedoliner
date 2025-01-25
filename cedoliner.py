@@ -18,6 +18,7 @@ import pdfplumber
 import os
 import openpyxl
 from openpyxl.styles import PatternFill
+from difflib import SequenceMatcher
 
 red_fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
 
@@ -44,6 +45,17 @@ def mese_a_numero(mese):
     }
     return mesi.get(mese, 0)
 
+def best_match(stringa, lista_stringhe):
+    miglior_match = None
+    massimo_ratio = 0
+    
+    for elemento in lista_stringhe:
+        ratio = SequenceMatcher(None, stringa, elemento).ratio()
+        if ratio > massimo_ratio:
+            massimo_ratio = ratio
+            miglior_match = elemento
+    
+    return miglior_match, massimo_ratio
 def analizza_cedolino(pdf_path, anno, parole_chiave):#, pattern_codici):
     risultati = []
     got_ref=False
@@ -105,7 +117,7 @@ def analizza_cedolino(pdf_path, anno, parole_chiave):#, pattern_codici):
                             #    print(f"Colonna {col_idx} Competenze: {competenze}\n")
                             if listacolonna[0]=="Descrizione":
                                 #print(f"Colonna {col_idx} Descrizione: {listacolonna}\n")
-                                descrizioni=listacolonna[1]
+                                descrizioni=listacolonna[1].split("\n")
                                
                             if page_num==1:
                                 if col_idx==1:
@@ -142,16 +154,18 @@ def analizza_cedolino(pdf_path, anno, parole_chiave):#, pattern_codici):
                             for parola in parole_chiave:
                                 if parola.lower() in riga.lower():
                                     #recupero descrizione
-                                    desc=riga.split()[1]
-                                    if desc in descrizioni.split("\n"):
-                                        descrizione=desc
-                                    else:
-                                        ns=riga.lower().find(parola.lower())+len(parola)
-                                        ne=riga.find(" X ")
-                                        if ne==-1:
-                                            ne=len(riga)-len(parola)
-                                        descrizione=riga[:ne][ns:]
+                                    
+                                    #descrizione,ratio=best_match(riga,descrizioni)
+                                    
+                                    
+                                    ns=riga.lower().find(parola.lower())+len(parola)
+                                    ne=riga.find(" X ")
+                                    if ne==-1:
+                                        ne=len(riga)-len(parola)
+                                    descrizione=riga[:ne][ns:]
                                     if descrizione!="":
+                                        descrizione,ratio=best_match(descrizione,descrizioni)
+                                        print(f"Descrizione: {descrizione} - Ratio: {ratio}")
                                         valori=riga.split()
                                         if valori[-2].find("-")>-1:
                                             # trovata trattenuta mediante aliquota o parametro negativo
@@ -160,7 +174,7 @@ def analizza_cedolino(pdf_path, anno, parole_chiave):#, pattern_codici):
                                             # trovata competenza mediante aliquota o parametro positivo
                                             valore=valori[-1]
                                         risultati.append((page_num, mese, parola, valore,descrizione))                                        
-        return (risultati,(presenze,ferie))
+        return (risultati,(presenze,ferie,mese))
     else:
         return []
 
@@ -179,13 +193,18 @@ for root, dirs, files in os.walk(cartella_pdf):
         cell = ws.cell(row=ws.max_row, column=2)
         cell.font = openpyxl.styles.Font(size=14, bold=True)
     conta=0
+    pf_risultati = []
     for pdf_path in pdf_files:
         conta+=1
-        risultati,(pres,fer) = analizza_cedolino(pdf_path[0], pdf_path[1], parole_chiave)#, pattern_codici)
-        ws.append(["Presenze:", pres, "Ferie:", fer])
+        risultati,(pres,fer,month) = analizza_cedolino(pdf_path[0], pdf_path[1], parole_chiave)#, pattern_codici)
+        pf_risultati.append((month,pres,fer))
+        #ws.append([f"Presenze: {month}", pres, "Ferie:", fer])
         if len(risultati)==0:
             print(f"ATTENZIONE: il file [{pdf_path[0]}] non ha prodotto risultati")
         risultati_cartella.extend(risultati)
+    pf_risultati_ordinati = sorted(pf_risultati, key=lambda x: mese_a_numero(x[0]))
+    for mese,pres,fer in pf_risultati_ordinati:
+        ws.append([f"Presenze {mese}:", pres, f"Ferie {mese}:", fer])
     if conta<12:
         print("ATTENZIONE: sono stati elaborati meno di 12 file")
     elif conta==12:
