@@ -89,29 +89,23 @@ def analizza_cedolino(pdf_path, anno, parole_chiave):#, pattern_codici):
                 #    print("tabella:",table,"\n")
                 for table_idx, table in enumerate(tables, start=1):
                     if table:  # Se la tabella non è vuota
-                        print(f"Pagina {page_num}, Tabella {table_idx}:\n")
-                        
-                        # Trasponi la tabella per ottenere le colonne
+                        #print(f"Pagina {page_num}, Tabella {table_idx}:\n")
                         colonne = list(zip(*table))
-                        # Itera sulle colonne
                         for col_idx, colonna in enumerate(colonne, start=1):
-                            #print(f"Colonna {col_idx}: {colonna}\n")
                             listacolonna=[]
                             for item in colonna:
                                 if item is not None:
                                     listacolonna.append(item)
-                            #i = 0
-                            #while i < len(colonna):
-                            #    if colonna[i] is None:
-                            #        colonna.pop(i)
-                            #    else:
-                            #        i += 1
-                            if listacolonna[0]=="Trattenute":
-                                trattenute=listacolonna[1].split("\n")
-                                print(f"Colonna {col_idx} Trattenute: {trattenute}\n")
-                            elif listacolonna[0]=="Competenze":
-                                competenze=listacolonna[1].split("\n")
-                                print(f"Colonna {col_idx} Competenze: {competenze}\n")
+                            # uncomment these lines if needed
+                            #if listacolonna[0]=="Trattenute":
+                            #    trattenute=listacolonna[1].split("\n")
+                            #    print(f"Colonna {col_idx} Trattenute: {trattenute}\n")
+                            #elif listacolonna[0]=="Competenze":
+                            #    competenze=listacolonna[1].split("\n")
+                            #    print(f"Colonna {col_idx} Competenze: {competenze}\n")
+                            if listacolonna[0]=="Descrizione":
+                                #print(f"Colonna {col_idx} Descrizione: {listacolonna}\n")
+                                descrizioni=listacolonna[1]
                                
                             if page_num==1:
                                 if col_idx==1:
@@ -121,12 +115,12 @@ def analizza_cedolino(pdf_path, anno, parole_chiave):#, pattern_codici):
                                             if listacolonna[i+1]:
                                                 if listacolonna[i+1].isnumeric():
                                                     presenze=listacolonna[i+1]
-                                                    print(f"Presenze: {presenze}\n")
+                                                    #print(f"Presenze: {presenze}\n")
                                                 else:
                                                     presenze=listacolonna[i+1]
-                                                    print(f"Presenze non numeriche: {presenze}\n")
+                                                    #print(f"Presenze formato testo: {presenze}\n")
                                             else:
-                                                print("Nessuna presenza\n")
+                                                #print("Nessuna presenza\n")
                                                 presenze=0
                                         i+=1
                                 else:
@@ -134,12 +128,12 @@ def analizza_cedolino(pdf_path, anno, parole_chiave):#, pattern_codici):
                                         if listacolonna[1]:
                                             if listacolonna[1].isnumeric():
                                                 ferie=listacolonna[1]
-                                                print(f"Ferie: {ferie}\n")
+                                                #print(f"Ferie: {ferie}\n")
                                             else:
                                                 ferie=listacolonna[1]
-                                                print(f"Ferie non numeriche: {ferie}\n")
+                                                #print(f"Ferie formato testo: {ferie}\n")
                                         else:
-                                            print("Nessun giorno di ferie\n")
+                                            #print("Nessun giorno di ferie\n")
                                             ferie=0
                 if testo:
                     righe = testo.split("\n")
@@ -147,64 +141,26 @@ def analizza_cedolino(pdf_path, anno, parole_chiave):#, pattern_codici):
                         if any(parola in riga for parola in parole_chiave):
                             for parola in parole_chiave:
                                 if parola.lower() in riga.lower():
-                                    print(f"riga: {riga}\n")
                                     #recupero descrizione
-                                    ns=riga.lower().find(parola.lower())+len(parola)
-                                    ne=riga.find(" X ")
-                                    if ne==-1:
-                                        ne=len(riga)-len(parola)
-                                    descrizione=riga[:ne][ns:]
-                                    #print(descrizione) 
-                                    #tables = page.extract_tables()
+                                    desc=riga.split()[1]
+                                    if desc in descrizioni.split("\n"):
+                                        descrizione=desc
+                                    else:
+                                        ns=riga.lower().find(parola.lower())+len(parola)
+                                        ne=riga.find(" X ")
+                                        if ne==-1:
+                                            ne=len(riga)-len(parola)
+                                        descrizione=riga[:ne][ns:]
                                     if descrizione!="":
                                         valori=riga.split()
-                                        #print("valori:",valori)
                                         if valori[-2].find("-")>-1:
-                                            #print(f"trovata trattenuta {valori[-1]}")
+                                            # trovata trattenuta mediante aliquota o parametro negativo
                                             valore="-"+valori[-1]
                                         else:
-                                            #print(f"trovata competenza {valori[-1]}")
+                                            # trovata competenza mediante aliquota o parametro positivo
                                             valore=valori[-1]
-                                        risultati.append((page_num, mese, parola, valore,descrizione))
-                                        ##print("descrizione:",descrizione)
-                                        #for table in tables:
-                                        #    #print(table)
-                                        #    for row in table:
-                                        #        #print(row)
-                                        #        i = 0
-                                        #        while i < len(row):
-                                        #            if row[i] is None:
-                                        #                row.pop(i)
-                                        #            else:
-                                        #                i += 1
-                                        #        if any(parola.lower() in cell.lower() for cell in row if cell):
-                                        #            #print("trovato",parola,"in",row)
-                                        #            #print("per il mese",mese,anno)
-                                        #            #print("array di row:",row)
-                                        #            if row[-1]:
-                                        #                valore = row[-1]
-                                        #                #print(row[-1])
-                                        #                if riga.split()[-1] in valore.split("\n"):
-                                        #                    print("caso 1.1",riga.split()[-1])
-                                        #                    #print("aggiungo "+riga.split()[-1])
-                                        #                else:
-                                        #                    risultati.append((page_num, mese, parola, "-"+riga.split()[-1],descrizione))
-                                        #                    print("caso 1.2",riga.split()[-1])
-                                        #                    #print("aggiungo -"+riga.split()[-1])
-                                        #            elif row[-2]:
-                                        #                valore = row[-2]
-                                        #                #print(row[-2])
-                                        #                if riga.split()[-1] in valore.split("\n"):
-                                        #                    risultati.append((page_num, mese, parola, "-"+riga.split()[-1],descrizione))
-                                        #                    print("caso 2.1",riga.split()[-1])
-                                        #                    #print("aggiungo -"+riga.split()[-1])
-                                        #                else:
-                                        #                    risultati.append((page_num, mese, parola, riga.split()[-1],descrizione))
-                                        #                    print("caso 2.2",riga.split()[-1])
-                                        #                    #print("aggiungo "+riga.split()[-1])
-                                        #            else:
-                                        #                print("ERRORE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-        return risultati
+                                        risultati.append((page_num, mese, parola, valore,descrizione))                                        
+        return (risultati,(presenze,ferie))
     else:
         return []
 
@@ -225,7 +181,8 @@ for root, dirs, files in os.walk(cartella_pdf):
     conta=0
     for pdf_path in pdf_files:
         conta+=1
-        risultati = analizza_cedolino(pdf_path[0], pdf_path[1], parole_chiave)#, pattern_codici)
+        risultati,(pres,fer) = analizza_cedolino(pdf_path[0], pdf_path[1], parole_chiave)#, pattern_codici)
+        ws.append(["Presenze:", pres, "Ferie:", fer])
         if len(risultati)==0:
             print(f"ATTENZIONE: il file [{pdf_path[0]}] non ha prodotto risultati")
         risultati_cartella.extend(risultati)
@@ -237,19 +194,14 @@ for root, dirs, files in os.walk(cartella_pdf):
         print("file elaborati:",conta)
     risultati_ordinati = sorted(risultati_cartella, key=lambda x: mese_a_numero(x[1]))
 
-
-
-
     for pagina, mese, parola,valore,descrizione in risultati_ordinati:
         if start_row_for_year is None:
             start_row_for_year = ws.max_row + 1  # Set the starting row for the current year
-        ws.append([mese, pagina, parola,descrizione, float(valore.replace(",",".")),"",pdf_path[1]])
-        cell = ws.cell(row=ws.max_row,column=4)
+        ws.append([mese, pagina, parola,descrizione, float(valore.replace(",","."))])
+        cell = ws.cell(row=ws.max_row,column=5)
         if str(valore).startswith("-"):
             cell.fill = red_fill
-    #ws.append(["", "", "", f"Totale {pdf_path[1]}", f"=SUM(E2:E{ws.max_row})"])
     if start_row_for_year is not None:
-        #ws[f"E{ws.max_row + 1}"] = f"=SUM(E{start_row_for_year}:E{ws.max_row})"
         ws.append(["","","",f"Totale {pdf_path[1]}", f"=SUM(E{start_row_for_year}:E{ws.max_row})"])
     pdf_files.clear()# = []
     risultati_cartella.clear()  # Clear the results for the next year
