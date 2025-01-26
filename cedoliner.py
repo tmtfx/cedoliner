@@ -62,7 +62,7 @@ def analizza_cedolino(pdf_path, anno, parole_chiave):#, pattern_codici):
     mese = None
     ispdf=True
     """questa parte ricerca il mese e l'anno del cedolino"""
-    print("analisi del cedolino",pdf_path)
+    #print("analisi del cedolino",pdf_path)
     try:
         with pdfplumber.open(pdf_path) as pdf:
             for page_num, page in enumerate(pdf.pages, start=1):
@@ -94,11 +94,36 @@ def analizza_cedolino(pdf_path, anno, parole_chiave):#, pattern_codici):
             mese=os.path.basename(pdf_path).split()[0]
         """questa parte cerca i codici e le colonne in cui son scritti"""
         with pdfplumber.open(pdf_path) as pdf:
+            totcoddesc=[]
+            for page in pdf.pages:
+                tables = page.extract_tables()
+                for table in tables:
+                    if table:
+                        for riga in table:
+                            coddesc=[]
+                            if riga[1]!=None:
+                                try:
+                                    elementir0=riga[0].split("\n")
+                                    elementir1=riga[1].split("\n")
+                                    if len(elementir0)==len(elementir1):
+                                        i=0
+                                        while i < len(elementir0):
+                                            if elementir0[i] in parole_chiave:
+                                                coddesc.append((elementir0[i],elementir1[i]))
+                                                
+                                            i+=1
+                                        if coddesc!=[]:
+                                            ##print(f"coddesc {coddesc}")
+                                            totcoddesc.extend(coddesc)
+                                except AttributeError:
+                                    pass
+            #print(f"totcoddesc {totcoddesc}")
             for page_num, page in enumerate(pdf.pages, start=1):
                 testo = page.extract_text()
                 tables = page.extract_tables()
                 #for table in tables:
                 #    print("tabella:",table,"\n")
+                #print(tables)
                 for table_idx, table in enumerate(tables, start=1):
                     if table:  # Se la tabella non è vuota
                         #print(f"Pagina {page_num}, Tabella {table_idx}:\n")
@@ -115,10 +140,9 @@ def analizza_cedolino(pdf_path, anno, parole_chiave):#, pattern_codici):
                             #elif listacolonna[0]=="Competenze":
                             #    competenze=listacolonna[1].split("\n")
                             #    print(f"Colonna {col_idx} Competenze: {competenze}\n")
-                            if listacolonna[0]=="Descrizione":
-                                #print(f"Colonna {col_idx} Descrizione: {listacolonna}\n")
-                                descrizioni=listacolonna[1].split("\n")
-                               
+                            #if listacolonna[0]=="Descrizione":
+                            #    #print(f"Colonna {col_idx} Descrizione: {listacolonna}\n")
+                            #    descrizioni=listacolonna[1].split("\n")
                             if page_num==1:
                                 if col_idx==1:
                                     i=0
@@ -146,7 +170,7 @@ def analizza_cedolino(pdf_path, anno, parole_chiave):#, pattern_codici):
                                                 #print(f"Ferie formato testo: {ferie}\n")
                                         else:
                                             #print("Nessun giorno di ferie\n")
-                                            ferie=0
+                                            ferie=0                            
                 if testo:
                     righe = testo.split("\n")
                     for riga in righe:
@@ -155,17 +179,36 @@ def analizza_cedolino(pdf_path, anno, parole_chiave):#, pattern_codici):
                                 if parola.lower() in riga.lower():
                                     #recupero descrizione
                                     
-                                    #descrizione,ratio=best_match(riga,descrizioni)
-                                    
-                                    
+                                    #questa parte serve a evitare che il codice venga rilevato in alto a dx
+                                    #TODO: forse è meglio usare l'analisi della tabella per evitare questo problema
+                                    #ma per ora lascio così
                                     ns=riga.lower().find(parola.lower())+len(parola)
                                     ne=riga.find(" X ")
                                     if ne==-1:
                                         ne=len(riga)-len(parola)
-                                    descrizione=riga[:ne][ns:]
+                                    descrizione=riga[ns:ne]
                                     if descrizione!="":
-                                        descrizione,ratio=best_match(descrizione,descrizioni)
-                                        print(f"Descrizione: {descrizione} - Ratio: {ratio}")
+                                        #best_match fornisce una stima alcune volte sbagliata, 
+                                        #meglio evitare anche se il testo è molto più gradevole
+                                        #EDIT: ho trovato un metodo migliore, questa è l'implementazione:
+                                        #      nel caso dia problemi è possibile rimuovere questo metodo
+                                        #      e usare la stringa sopra, sebbene talvolta presenti valori
+                                        #      aggiuntivi non inerenti
+                                        #metodo esplicito
+                                        #print("descrizione prima: ",descrizione)
+                                        if parola in [x[0] for x in totcoddesc]:
+                                            for x in totcoddesc:
+                                                if x[0]==parola:
+                                                    descrizione=x[1]
+                                                    totcoddesc.remove(x)
+                                                    break
+                                        #print("descrizione dopo: ",descrizione)
+                                        #promemoria programmazione:
+                                        #metodo comprensione liste
+                                        #descrizione=[x[1] for x in totcoddesc if x[0]==parola][0]
+                                        #metodo più sicuro con comprensione liste
+                                        #descrizione = next((x[1] for x in totcoddesc if x[0] == parola), None)
+
                                         valori=riga.split()
                                         if valori[-2].find("-")>-1:
                                             # trovata trattenuta mediante aliquota o parametro negativo
@@ -173,7 +216,9 @@ def analizza_cedolino(pdf_path, anno, parole_chiave):#, pattern_codici):
                                         else:
                                             # trovata competenza mediante aliquota o parametro positivo
                                             valore=valori[-1]
-                                        risultati.append((page_num, mese, parola, valore,descrizione))                                        
+                                        risultati.append((page_num, mese, parola, valore,descrizione))
+        if len(totcoddesc)>0:
+            print(f"ATTENZIONE: qualche descrizione in questo mese potrebbe essere sbagliata\nmancano da assegnare: {totcoddesc}")
         return (risultati,(presenze,ferie,mese))
     else:
         return []
