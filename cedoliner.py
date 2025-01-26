@@ -130,11 +130,19 @@ def analizza_cedolino(pdf_path, anno, parole_chiave):#, pattern_codici):
                 for table in tables:
                     if table:
                         for riga in table:
+                            #print(f"riga: {riga}")
                             coddesc=[]
-                            if riga[1]!=None:
+                            #qualche cedolino è formattato diversamente, quindi devo rimuovere i valori nulli
+                            newriga=[]
+                            for item in riga:
+                                if item is not None:
+                                    newriga.append(item)
+                            #print(f"newriga: {newriga}")
+                            #if riga[1]!=None:
+                            if True:
                                 try:
-                                    elementir0=riga[0].split("\n")
-                                    elementir1=riga[1].split("\n")
+                                    elementir0=newriga[0].split("\n")
+                                    elementir1=newriga[1].split("\n")
                                     if len(elementir0)==len(elementir1):
                                         i=0
                                         while i < len(elementir0):
@@ -146,15 +154,19 @@ def analizza_cedolino(pdf_path, anno, parole_chiave):#, pattern_codici):
                                             ##print(f"coddesc {coddesc}")
                                             totcoddesc.extend(coddesc)
                                 except AttributeError:
+                                    #di solito è quando trova un None, quindi non è un problema 
+                                    #anzi non dovrebbe più trovare None visto che li abbiamo rimossi
+                                    pass
+                                except IndexError:
+                                    #di solito rileva un codice altrove, quindi non è un problema
                                     pass
             #print(f"totcoddesc {totcoddesc}")
             for page_num, page in enumerate(pdf.pages, start=1):
                 testo = page.extract_text()
                 tables = page.extract_tables()
-                #for table in tables:
-                #    print("tabella:",table,"\n")
-                #print(tables)
-                for table_idx, table in enumerate(tables, start=1):
+                #non serve enumerare le tabelle, basta che siano presenti
+                #for table_idx, table in enumerate(tables, start=1):
+                for table in tables:
                     if table:  # Se la tabella non è vuota
                         #print(f"Pagina {page_num}, Tabella {table_idx}:\n")
                         colonne = list(zip(*table))
@@ -205,6 +217,8 @@ def analizza_cedolino(pdf_path, anno, parole_chiave):#, pattern_codici):
                     righe = testo.split("\n")
                     for riga in righe:
                         if any(parola in riga for parola in parole_chiave):
+                            #decommenta per stampare a schermo le righe estratte
+                            #print(f"Riga: {riga}")
                             for parola in parole_chiave:
                                 if parola.lower() in riga.lower():
                                     #recupero descrizione
@@ -217,6 +231,7 @@ def analizza_cedolino(pdf_path, anno, parole_chiave):#, pattern_codici):
                                     if ne==-1:
                                         ne=len(riga)-len(parola)
                                     descrizione=riga[ns:ne]
+                                    #print(f"descrizione: {descrizione}")
                                     if descrizione!="":
                                         #best_match fornisce una stima alcune volte sbagliata, 
                                         #meglio evitare anche se il testo è molto più gradevole
@@ -231,6 +246,7 @@ def analizza_cedolino(pdf_path, anno, parole_chiave):#, pattern_codici):
                                                 if x[0]==parola:
                                                     descrizione=x[1]
                                                     totcoddesc.remove(x)
+                                                    #print(f"abbellimento: {descrizione}")
                                                     break
                                         #print("descrizione dopo: ",descrizione)
                                         #promemoria programmazione:
