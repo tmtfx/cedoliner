@@ -18,7 +18,7 @@ import pdfplumber
 import os
 import openpyxl
 from openpyxl.styles import PatternFill
-from difflib import SequenceMatcher
+#from difflib import SequenceMatcher
 
 red_fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
 
@@ -45,17 +45,18 @@ def mese_a_numero(mese):
     }
     return mesi.get(mese, 0)
 
-def best_match(stringa, lista_stringhe):
-    miglior_match = None
-    massimo_ratio = 0
-    
-    for elemento in lista_stringhe:
-        ratio = SequenceMatcher(None, stringa, elemento).ratio()
-        if ratio > massimo_ratio:
-            massimo_ratio = ratio
-            miglior_match = elemento
-    
-    return miglior_match, massimo_ratio
+#def best_match(stringa, lista_stringhe):
+#    miglior_match = None
+#    massimo_ratio = 0
+#    
+#    for elemento in lista_stringhe:
+#        ratio = SequenceMatcher(None, stringa, elemento).ratio()
+#        if ratio > massimo_ratio:
+#            massimo_ratio = ratio
+#            miglior_match = elemento
+#    
+#    return miglior_match, massimo_ratio
+
 def analizza_cedolino(pdf_path, anno, parole_chiave):#, pattern_codici):
     risultati = []
     got_ref=False
@@ -91,7 +92,36 @@ def analizza_cedolino(pdf_path, anno, parole_chiave):#, pattern_codici):
     if ispdf:
         if not got_ref:
             print("fallback - nome mese da nome file")
-            mese=os.path.basename(pdf_path).split()[0]
+            tn=os.path.splitext(os.path.basename(pdf_path))[0]
+            maybe_mese=tn.split()
+            for mnth in mese_anno_ref:
+                if mnth.lower() in [mese.lower() for mese in maybe_mese]:
+                    mese=mnth
+                    print("rilevato:",mese,anno)
+                    break
+            if mese is None:
+                print("Impossibile rilevare il mese dal nome del file,\nsi procede con tentativi di mitigazione")
+                #mese=os.path.basename(pdf_path).split()[0]
+                stripname=tn.replace(" ","")
+                stripname=stripname.replace(anno,"")
+                p=stripname.lower().find("cedolino")
+                if p>-1:
+                    stripname=stripname[p+len("cedolino"):]
+                stripname=stripname.replace("-","")
+                stripname=stripname.replace("_","")
+                p=stripname.find(".")
+                if p>-1:
+                    stripname=stripname[:p]
+                solo_mese = "".join(c for c in stripname if c.isdigit())
+                if solo_mese!="":
+                    try:
+                        mese=mese_anno_ref[int(solo_mese)-1]
+                        print("dedotto:",mese,anno)
+                    except:
+                        print("ATTENZIONE: impossibile rilevare il mese dal nome del file,\nverificare il nome del file")
+                else:
+                    print("ATTENZIONE: impossibile rilevare il mese dal nome del file,\nverificare il nome del file")
+            
         """questa parte cerca i codici e le colonne in cui son scritti"""
         with pdfplumber.open(pdf_path) as pdf:
             totcoddesc=[]
