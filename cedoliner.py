@@ -18,6 +18,8 @@ import pdfplumber
 import os
 import openpyxl
 from openpyxl.styles import PatternFill
+from openpyxl.utils import get_column_letter
+
 #from difflib import SequenceMatcher
 
 red_fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
@@ -96,6 +98,7 @@ def deduci_mese_da_nome_file(pdf_path,anno,isnoloop):
     if no_ref:
         if isnoloop and mese is None:
             print(f"ATTENZIONE: impossibile rilevare il mese dal nome del file,\nverificare il nome del file per {pdf_path}")
+            return os.path.splitext(os.path.basename(pdf_path))[0]
     return mese
 
 def analizza_cedolino(pdf_path, anno, parole_chiave):
@@ -116,7 +119,7 @@ def analizza_cedolino(pdf_path, anno, parole_chiave):
                         if not got_ref:
                             for parola in mese_anno_ref:
                                 if parola in riga:
-                                    n=riga.find(parola)
+                                    n=riga.find(parola) # stiamo rispettando le maiuscole e le minuscole, cambiare se necessario
                                     if n!=-1:
                                         mese_anno=riga[n:]
                                         if (mese_anno.split()[1]==anno)or(mese_anno[-4:]==anno):
@@ -129,10 +132,15 @@ def analizza_cedolino(pdf_path, anno, parole_chiave):
                                                 got_ref=True
                                                 break
                                             else:
-                                                mese=deduci_mese_da_nome_file(pdf_path,anno,False)
-                                                if mese is not None:
+                                                mese_dedotto=deduci_mese_da_nome_file(pdf_path,anno,False)
+                                                if mese_dedotto is not None and mese_dedotto == mese_rilevato:
+                                                    mese=mese_rilevato
+                                                    print("elaborazione di",mese,anno)
                                                     got_ref=True
                                                     break
+                                                #if mese is not None:
+                                                #    got_ref=True
+                                                #    break
 
     except Exception as e:
             print(f"Errore nell'analisi del cedolino {pdf_path}: {e}")
@@ -141,56 +149,12 @@ def analizza_cedolino(pdf_path, anno, parole_chiave):
     if ispdf:
         if not got_ref:
             print("fallback - nome mese da nome file")
-            deduci_mese_da_nome_file(pdf_path,anno,True)
+            mese=deduci_mese_da_nome_file(pdf_path,anno,True)
 
         """questa parte cerca i codici e le colonne in cui son scritti"""
         
         with pdfplumber.open(pdf_path) as pdf:
             totcoddesc=[]
-            """ vecchio ciclo separato integrato in quello successivo
-            for page_num, page in enumerate(pdf.pages, start=1):
-                tables = page.extract_tables()
-                stopiter=False
-                lastcode=""
-                #for table in tables:
-                for table_idx, table in enumerate(tables, start=1):
-                    if table:
-                        if not stopiter:  # Se la tabella non è vuota e non è già stata trovata
-                            for riga in table:
-                                #print(f"riga di tabella: {riga}")
-                                coddesc=[]
-                                #qualche cedolino è formattato diversamente, quindi devo rimuovere i valori nulli
-                                newriga=[]
-                                for item in riga:
-                                    if item is not None:
-                                        newriga.append(item)
-                                #print(f"newriga: {newriga}")
-                                #if riga[1]!=None:
-                                try:
-                                    elementir0=newriga[0].split("\n")
-                                    elementir1=newriga[1].split("\n")
-                                    #controlliamo che il numero di elementi della prima e della seconda colonna siano uguali
-                                    #codice con loro descrizione
-                                    if len(elementir0)==len(elementir1):
-                                        i=0
-                                        while i < len(elementir0):
-                                            if elementir0[i] in parole_chiave:
-                                                coddesc.append((elementir0[i],elementir1[i]))
-                                                stopiter=True#non serve continuare a cercare in altre tabelle
-                                                lastcode=elementir0[len(elementir0)-1]
-                                            i+=1
-                                        if coddesc!=[]:
-                                            ##print(f"coddesc {coddesc}")
-                                            totcoddesc.extend(coddesc)
-                                except AttributeError:
-                                    #di solito è quando trova un None, quindi non è un problema 
-                                    #anzi non dovrebbe più trovare None visto che li abbiamo rimossi
-                                    pass
-                                except IndexError:
-                                    #di solito rileva un codice altrove, quindi non è un problema
-                                    pass
-                if lastcode == "":
-                    print(f"ATTENZIONE: nessun ultimo codice rilevato nella pagina {page_num} del cedolino {pdf_path}")"""
             #print(f"totcoddesc {totcoddesc}")
             for page_num, page in enumerate(pdf.pages, start=1):
                 testo = page.extract_text()
@@ -282,8 +246,8 @@ def analizza_cedolino(pdf_path, anno, parole_chiave):
                                             ferie="0"
                 if lastcode == "":
                     #pdf_path
-                    log(f"la pagina {page_num} del cedolino [{os.path.basename(pdf_path)}] nella cartella \"{anno}\" potrebbe aver prodotto risultati inattesi, verificare")
-                    print(f"ATTENZIONE: nessun ultimo codice rilevato nella pagina {page_num} del cedolino {pdf_path}")                           
+                    log(f"### la pagina {page_num} del cedolino [{os.path.basename(pdf_path)}] nella cartella \"{anno}\" potrebbe aver prodotto risultati inattesi, verificare")
+                    #print(f"ATTENZIONE: nessun ultimo codice rilevato nella pagina {page_num} del cedolino {pdf_path}")                           
                 if testo:
                     startelaborate=False
                     elaborateandquit=False
@@ -371,8 +335,12 @@ def analizza_cedolino(pdf_path, anno, parole_chiave):
                         for it in risultati:
                             if it[0]==page_num:
                                 tst+=f"{it}\n"
-                        log(f"valori della pagina {page_num} inseriti:\n{tst}\n")
+                        log(f"### valori della pagina {page_num} inseriti:\n{tst}\n")
                 #    print(f"ATTENZIONE: nessun ultimo codice rilevato nella pagina {page_num} del cedolino {pdf_path}")
+            if risultati == []:
+                #pdf_path
+                log(f"il file [{os.path.basename(pdf_path)}] nella cartella \"{anno}\" non ha prodotto risultati\n")
+                print(f"ATTENZIONE: il file {pdf_path} non ha prodotto risultati")
         if len(totcoddesc)>0:
             log(f"il file [{pdf_path}] nella cartella \"{anno}\" ha codici non assegnati, ne mancano: {len(totcoddesc)}\npiù precisamente mancano: {totcoddesc}\n")
             print(f"ATTENZIONE: qualche descrizione in questo mese potrebbe essere sbagliata\nmancano da assegnare: {totcoddesc}")
@@ -445,7 +413,19 @@ for root, dirs, files in os.walk(cartella_pdf):
     pdf_files.clear()# = []
     risultati_cartella.clear()  # Clear the results for the next year
     start_row_for_year = None
+#adattamento colonne a larghezza testo massima
+for column in ws.columns:
+    max_length = 0
+    column = [cell for cell in column if cell.value] #rimuovo le celle vuote
+    for cell in column:
+        try:
+            if len(str(cell.value)) > max_length:
+                max_length = len(str(cell.value))
+        except:
+            pass
+    adjusted_width = (max_length + 2) #aggiungo un po di spazio
 
+    ws.column_dimensions[get_column_letter(column[0].column)].width = adjusted_width
 wb.save("risultati_cedolini.xlsx")
 
 print("File Excel creato con successo: risultati_cedolini.xlsx")
