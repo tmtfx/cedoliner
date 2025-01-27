@@ -265,7 +265,7 @@ def analizza_cedolino(pdf_path, anno, parole_chiave):#, pattern_codici):
                     startelaborate=False
                     elaborateandquit=False
                     righe = testo.split("\n")
-                    print(f"Testo pagina {page_num}:\n{righe}")
+                    #print(f"Testo pagina {page_num}:\n{righe}")
                     for numr,riga in enumerate(righe):
                         if not startelaborate:
                             if riga.lower().replace(" ","").find("cod.voce")>-1:
@@ -276,21 +276,28 @@ def analizza_cedolino(pdf_path, anno, parole_chiave):#, pattern_codici):
                         if startelaborate:
                             if lastcode!="":
                                 if lastcode in riga:
-                                    print(f"Riga con lastcode {lastcode}: {riga}")
+                                    #print(f"Riga con lastcode {lastcode}: {riga}")
                                     try:
                                         if lastcode in righe[numr+1]:
-                                            print(f"Riga successiva con lastcode {lastcode}: {righe[numr+1]}")
+                                            #print(f"Riga successiva con lastcode {lastcode}: {righe[numr+1]}")
                                             pass
                                         else:
                                             elaborateandquit=True #non serve cercare oltre
                                     except IndexError:
                                         elaborateandquit=True #non serve cercare oltre
-                            print(f"riga di testo: {riga}")
-                            if any(parola in riga for parola in parole_chiave):
+                            #print(f"riga di testo: {riga}")
+                            #if any(parola in riga for parola in parole_chiave):
+                            for parola in parole_chiave:
+                                #if parola.lower() in riga.lower(): sono numeri non serve il lower
+                                if parola in riga:
+                                    #print(f"Parola chiave {parola} trovata in riga: {riga}")
+                                    words=riga.split()
+                                    if parola in words:
+
                                 #decommenta per stampare a schermo le righe estratte
                                 #print(f"Riga: {riga}")
-                                for parola in parole_chiave:
-                                    if parola.lower() in riga.lower():
+                                #for parola in parole_chiave:
+                                    #if parola.lower() in riga.lower():
                                         #recupero descrizione
                                         
                                         #questa parte serve a evitare che il codice venga rilevato in alto a dx
