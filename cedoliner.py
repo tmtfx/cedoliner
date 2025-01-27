@@ -126,12 +126,13 @@ def analizza_cedolino(pdf_path, anno, parole_chiave):#, pattern_codici):
         
         with pdfplumber.open(pdf_path) as pdf:
             totcoddesc=[]
+            """ vecchio ciclo separato integrato in quello successivo
             for page_num, page in enumerate(pdf.pages, start=1):
                 tables = page.extract_tables()
                 stopiter=False
                 lastcode=""
                 #for table in tables:
-                """for table_idx, table in enumerate(tables, start=1):
+                for table_idx, table in enumerate(tables, start=1):
                     if table:
                         if not stopiter:  # Se la tabella non è vuota e non è già stata trovata
                             for riga in table:
