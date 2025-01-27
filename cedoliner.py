@@ -123,32 +123,39 @@ def analizza_cedolino(pdf_path, anno, parole_chiave):#, pattern_codici):
                     print("ATTENZIONE: impossibile rilevare il mese dal nome del file,\nverificare il nome del file")
             
         """questa parte cerca i codici e le colonne in cui son scritti"""
+        
         with pdfplumber.open(pdf_path) as pdf:
             totcoddesc=[]
-            for page in pdf.pages:
+            for page_num, page in enumerate(pdf.pages, start=1):
                 tables = page.extract_tables()
-                for table in tables:
+                stopiter=False
+                lastcode=""
+                #for table in tables:
+                """for table_idx, table in enumerate(tables, start=1):
                     if table:
-                        for riga in table:
-                            #print(f"riga: {riga}")
-                            coddesc=[]
-                            #qualche cedolino è formattato diversamente, quindi devo rimuovere i valori nulli
-                            newriga=[]
-                            for item in riga:
-                                if item is not None:
-                                    newriga.append(item)
-                            #print(f"newriga: {newriga}")
-                            #if riga[1]!=None:
-                            if True:
+                        if not stopiter:  # Se la tabella non è vuota e non è già stata trovata
+                            for riga in table:
+                                #print(f"riga di tabella: {riga}")
+                                coddesc=[]
+                                #qualche cedolino è formattato diversamente, quindi devo rimuovere i valori nulli
+                                newriga=[]
+                                for item in riga:
+                                    if item is not None:
+                                        newriga.append(item)
+                                #print(f"newriga: {newriga}")
+                                #if riga[1]!=None:
                                 try:
                                     elementir0=newriga[0].split("\n")
                                     elementir1=newriga[1].split("\n")
+                                    #controlliamo che il numero di elementi della prima e della seconda colonna siano uguali
+                                    #codice con loro descrizione
                                     if len(elementir0)==len(elementir1):
                                         i=0
                                         while i < len(elementir0):
                                             if elementir0[i] in parole_chiave:
                                                 coddesc.append((elementir0[i],elementir1[i]))
-                                                
+                                                stopiter=True#non serve continuare a cercare in altre tabelle
+                                                lastcode=elementir0[len(elementir0)-1]
                                             i+=1
                                         if coddesc!=[]:
                                             ##print(f"coddesc {coddesc}")
@@ -160,32 +167,70 @@ def analizza_cedolino(pdf_path, anno, parole_chiave):#, pattern_codici):
                                 except IndexError:
                                     #di solito rileva un codice altrove, quindi non è un problema
                                     pass
+                if lastcode == "":
+                    print(f"ATTENZIONE: nessun ultimo codice rilevato nella pagina {page_num} del cedolino {pdf_path}")"""
             #print(f"totcoddesc {totcoddesc}")
             for page_num, page in enumerate(pdf.pages, start=1):
                 testo = page.extract_text()
                 tables = page.extract_tables()
+                stopiter=False
+                lastcode=""
                 #non serve enumerare le tabelle, basta che siano presenti
                 #for table_idx, table in enumerate(tables, start=1):
                 for table in tables:
                     if table:  # Se la tabella non è vuota
                         #print(f"Pagina {page_num}, Tabella {table_idx}:\n")
-                        colonne = list(zip(*table))
-                        for col_idx, colonna in enumerate(colonne, start=1):
-                            listacolonna=[]
-                            for item in colonna:
-                                if item is not None:
-                                    listacolonna.append(item)
-                            # uncomment these lines if needed
-                            #if listacolonna[0]=="Trattenute":
-                            #    trattenute=listacolonna[1].split("\n")
-                            #    print(f"Colonna {col_idx} Trattenute: {trattenute}\n")
-                            #elif listacolonna[0]=="Competenze":
-                            #    competenze=listacolonna[1].split("\n")
-                            #    print(f"Colonna {col_idx} Competenze: {competenze}\n")
-                            #if listacolonna[0]=="Descrizione":
-                            #    #print(f"Colonna {col_idx} Descrizione: {listacolonna}\n")
-                            #    descrizioni=listacolonna[1].split("\n")
-                            if page_num==1:
+                        if not stopiter:  # Se la tabella non è vuota e non è già stata trovata
+                            for riga in table:
+                                #print(f"riga di tabella: {riga}")
+                                coddesc=[]
+                                #qualche cedolino è formattato diversamente, quindi devo rimuovere i valori nulli
+                                newriga=[]
+                                for item in riga:
+                                    if item is not None:
+                                        newriga.append(item)
+                                #print(f"newriga: {newriga}")
+                                #if riga[1]!=None:
+                                try:
+                                    elementir0=newriga[0].split("\n")
+                                    elementir1=newriga[1].split("\n")
+                                    #controlliamo che il numero di elementi della prima e della seconda colonna siano uguali
+                                    #codice con loro descrizione
+                                    if len(elementir0)==len(elementir1):
+                                        i=0
+                                        while i < len(elementir0):
+                                            if elementir0[i] in parole_chiave:
+                                                coddesc.append((elementir0[i],elementir1[i]))
+                                                stopiter=True#non serve continuare a cercare in altre tabelle
+                                                lastcode=elementir0[len(elementir0)-1]
+                                            i+=1
+                                        if coddesc!=[]:
+                                            ##print(f"coddesc {coddesc}")
+                                            totcoddesc.extend(coddesc)
+                                except AttributeError:
+                                    #di solito è quando trova un None, quindi non è un problema 
+                                    #anzi non dovrebbe più trovare None visto che li abbiamo rimossi
+                                    pass
+                                except IndexError:
+                                    #di solito rileva un codice altrove, quindi non è un problema
+                                    pass
+                        if page_num==1:
+                            colonne = list(zip(*table))
+                            for col_idx, colonna in enumerate(colonne, start=1):
+                                listacolonna=[]
+                                for item in colonna:
+                                    if item is not None:
+                                        listacolonna.append(item)
+                                # uncomment these lines if needed
+                                #if listacolonna[0]=="Trattenute":
+                                #    trattenute=listacolonna[1].split("\n")
+                                #    print(f"Colonna {col_idx} Trattenute: {trattenute}\n")
+                                #elif listacolonna[0]=="Competenze":
+                                #    competenze=listacolonna[1].split("\n")
+                                #    print(f"Colonna {col_idx} Competenze: {competenze}\n")
+                                #if listacolonna[0]=="Descrizione":
+                                #    #print(f"Colonna {col_idx} Descrizione: {listacolonna}\n")
+                                #    descrizioni=listacolonna[1].split("\n")       
                                 if col_idx==1:
                                     i=0
                                     while i < len(listacolonna):
@@ -199,7 +244,7 @@ def analizza_cedolino(pdf_path, anno, parole_chiave):#, pattern_codici):
                                                     #print(f"Presenze formato testo: {presenze}\n")
                                             else:
                                                 #print("Nessuna presenza\n")
-                                                presenze=0
+                                                presenze="0"
                                         i+=1
                                 else:
                                     if listacolonna[0]=="Ferie":
@@ -212,57 +257,85 @@ def analizza_cedolino(pdf_path, anno, parole_chiave):#, pattern_codici):
                                                 #print(f"Ferie formato testo: {ferie}\n")
                                         else:
                                             #print("Nessun giorno di ferie\n")
-                                            ferie=0                            
+                                            ferie="0"
+                if lastcode == "":
+                    print(f"ATTENZIONE: nessun ultimo codice rilevato nella pagina {page_num} del cedolino {pdf_path}")                           
                 if testo:
+                    startelaborate=False
+                    elaborateandquit=False
                     righe = testo.split("\n")
-                    for riga in righe:
-                        if any(parola in riga for parola in parole_chiave):
-                            #decommenta per stampare a schermo le righe estratte
-                            #print(f"Riga: {riga}")
-                            for parola in parole_chiave:
-                                if parola.lower() in riga.lower():
-                                    #recupero descrizione
-                                    
-                                    #questa parte serve a evitare che il codice venga rilevato in alto a dx
-                                    #TODO: forse è meglio usare l'analisi della tabella per evitare questo problema
-                                    #ma per ora lascio così
-                                    ns=riga.lower().find(parola.lower())+len(parola)
-                                    ne=riga.find(" X ")
-                                    if ne==-1:
-                                        ne=len(riga)-len(parola)
-                                    descrizione=riga[ns:ne]
-                                    #print(f"descrizione: {descrizione}")
-                                    if descrizione!="":
-                                        #best_match fornisce una stima alcune volte sbagliata, 
-                                        #meglio evitare anche se il testo è molto più gradevole
-                                        #EDIT: ho trovato un metodo migliore, questa è l'implementazione:
-                                        #      nel caso dia problemi è possibile rimuovere questo metodo
-                                        #      e usare la stringa sopra, sebbene talvolta presenti valori
-                                        #      aggiuntivi non inerenti
-                                        #metodo esplicito
-                                        #print("descrizione prima: ",descrizione)
-                                        if parola in [x[0] for x in totcoddesc]:
-                                            for x in totcoddesc:
-                                                if x[0]==parola:
-                                                    descrizione=x[1]
-                                                    totcoddesc.remove(x)
-                                                    #print(f"abbellimento: {descrizione}")
-                                                    break
-                                        #print("descrizione dopo: ",descrizione)
-                                        #promemoria programmazione:
-                                        #metodo comprensione liste
-                                        #descrizione=[x[1] for x in totcoddesc if x[0]==parola][0]
-                                        #metodo più sicuro con comprensione liste
-                                        #descrizione = next((x[1] for x in totcoddesc if x[0] == parola), None)
-
-                                        valori=riga.split()
-                                        if valori[-2].find("-")>-1:
-                                            # trovata trattenuta mediante aliquota o parametro negativo
-                                            valore="-"+valori[-1]
+                    print(f"Testo pagina {page_num}:\n{righe}")
+                    for numr,riga in enumerate(righe):
+                        if not startelaborate:
+                            if riga.lower().replace(" ","").find("cod.voce")>-1:
+                                startelaborate=True
+                                continue
+                            else:
+                                continue
+                        if startelaborate:
+                            if lastcode!="":
+                                if lastcode in riga:
+                                    print(f"Riga con lastcode {lastcode}: {riga}")
+                                    try:
+                                        if lastcode in righe[numr+1]:
+                                            print(f"Riga successiva con lastcode {lastcode}: {righe[numr+1]}")
+                                            pass
                                         else:
-                                            # trovata competenza mediante aliquota o parametro positivo
-                                            valore=valori[-1]
-                                        risultati.append((page_num, mese, parola, valore,descrizione))
+                                            elaborateandquit=True #non serve cercare oltre
+                                    except IndexError:
+                                        elaborateandquit=True #non serve cercare oltre
+                            print(f"riga di testo: {riga}")
+                            if any(parola in riga for parola in parole_chiave):
+                                #decommenta per stampare a schermo le righe estratte
+                                #print(f"Riga: {riga}")
+                                for parola in parole_chiave:
+                                    if parola.lower() in riga.lower():
+                                        #recupero descrizione
+                                        
+                                        #questa parte serve a evitare che il codice venga rilevato in alto a dx
+                                        #TODO: forse è meglio usare l'analisi della tabella per evitare questo problema
+                                        #ma per ora lascio così
+                                        ns=riga.lower().find(parola.lower())+len(parola)
+                                        ne=riga.find(" X ")
+                                        if ne==-1:
+                                            ne=len(riga)-len(parola)
+                                        descrizione=riga[ns:ne]
+                                        #print(f"descrizione: {descrizione}")
+                                        if descrizione!="":
+                                            #best_match fornisce una stima alcune volte sbagliata, 
+                                            #meglio evitare anche se il testo è molto più gradevole
+                                            #EDIT: ho trovato un metodo migliore, questa è l'implementazione:
+                                            #      nel caso dia problemi è possibile rimuovere questo metodo
+                                            #      e usare la stringa sopra, sebbene talvolta presenti valori
+                                            #      aggiuntivi non inerenti
+                                            #metodo esplicito
+                                            #print("descrizione prima: ",descrizione)
+                                            if parola in [x[0] for x in totcoddesc]:
+                                                for x in totcoddesc:
+                                                    if x[0]==parola:
+                                                        descrizione=x[1]
+                                                        totcoddesc.remove(x)
+                                                        #print(f"abbellimento: {descrizione}")
+                                                        break
+                                            #print("descrizione dopo: ",descrizione)
+                                            #promemoria programmazione:
+                                            #metodo comprensione liste
+                                            #descrizione=[x[1] for x in totcoddesc if x[0]==parola][0]
+                                            #metodo più sicuro con comprensione liste
+                                            #descrizione = next((x[1] for x in totcoddesc if x[0] == parola), None)
+
+                                            valori=riga.split()
+                                            if valori[-2].find("-")>-1:
+                                                # trovata trattenuta mediante aliquota o parametro negativo
+                                                valore="-"+valori[-1]
+                                            else:
+                                                # trovata competenza mediante aliquota o parametro positivo
+                                                valore=valori[-1]
+                                            risultati.append((page_num, mese, parola, valore,descrizione))
+                        if elaborateandquit:
+                            break
+                #if lastcode == "":
+                #    print(f"ATTENZIONE: nessun ultimo codice rilevato nella pagina {page_num} del cedolino {pdf_path}")
         if len(totcoddesc)>0:
             print(f"ATTENZIONE: qualche descrizione in questo mese potrebbe essere sbagliata\nmancano da assegnare: {totcoddesc}")
         return (risultati,(presenze,ferie,mese))
