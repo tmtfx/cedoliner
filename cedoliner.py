@@ -45,6 +45,13 @@ def mese_a_numero(mese):
     }
     return mesi.get(mese, 0)
 
+def log(testo, azzera_file=False):
+    try:
+        modalita = "w" if azzera_file else "a"
+        with open("log.txt", modalita) as file_log:
+            file_log.write(testo + "\n")
+    except Exception as e:
+        print(f"Errore nella scrittura del file di log: {e}")
 #def best_match(stringa, lista_stringhe):
 #    miglior_match = None
 #    massimo_ratio = 0
@@ -91,7 +98,7 @@ def deduci_mese_da_nome_file(pdf_path,anno,isnoloop):
             print(f"ATTENZIONE: impossibile rilevare il mese dal nome del file,\nverificare il nome del file per {pdf_path}")
     return mese
 
-def analizza_cedolino(pdf_path, anno, parole_chiave):#, pattern_codici):
+def analizza_cedolino(pdf_path, anno, parole_chiave):
     risultati = []
     got_ref=False
     mese = None
@@ -274,6 +281,8 @@ def analizza_cedolino(pdf_path, anno, parole_chiave):#, pattern_codici):
                                             #print("Nessun giorno di ferie\n")
                                             ferie="0"
                 if lastcode == "":
+                    #pdf_path
+                    log(f"la pagina {page_num} del cedolino [{os.path.basename(pdf_path)}] nella cartella \"{anno}\" potrebbe aver prodotto risultati inattesi, verificare")
                     print(f"ATTENZIONE: nessun ultimo codice rilevato nella pagina {page_num} del cedolino {pdf_path}")                           
                 if testo:
                     startelaborate=False
@@ -356,16 +365,25 @@ def analizza_cedolino(pdf_path, anno, parole_chiave):#, pattern_codici):
                                             risultati.append((page_num, mese, parola, valore,descrizione))
                         if elaborateandquit:
                             break
-                #if lastcode == "":
+                    
+                    if lastcode == "":
+                        tst=""
+                        for it in risultati:
+                            if it[0]==page_num:
+                                tst+=f"{it}\n"
+                        log(f"valori della pagina {page_num} inseriti:\n{tst}\n")
                 #    print(f"ATTENZIONE: nessun ultimo codice rilevato nella pagina {page_num} del cedolino {pdf_path}")
         if len(totcoddesc)>0:
+            log(f"il file [{pdf_path}] nella cartella \"{anno}\" ha codici non assegnati, ne mancano: {len(totcoddesc)}\npiù precisamente mancano: {totcoddesc}\n")
             print(f"ATTENZIONE: qualche descrizione in questo mese potrebbe essere sbagliata\nmancano da assegnare: {totcoddesc}")
         return (risultati,(presenze,ferie,mese))
     else:
-        return []
+        return (None,(None,None,None))
 
 
 # Ottieni la lista di tutti i file PDF nella cartella
+log("Registro errori e avvisi",True)
+log("________________________\n")
 pdf_files = []
 risultati_cartella = []
 for root, dirs, files in os.walk(cartella_pdf):
@@ -382,18 +400,34 @@ for root, dirs, files in os.walk(cartella_pdf):
     pf_risultati = []
     for pdf_path in pdf_files:
         conta+=1
-        risultati,(pres,fer,month) = analizza_cedolino(pdf_path[0], pdf_path[1], parole_chiave)#, pattern_codici)
-        pf_risultati.append((month,pres,fer))
+        ret = analizza_cedolino(pdf_path[0], pdf_path[1], parole_chiave)#, pattern_codici)
+        if ret == (None, (None, None, None)):
+            print(f"ATTENZIONE: l'analisi di [{pdf_path[0]}] non ha prodotto risultati")
+            #pdf_path[0]
+            log(f"l'analisi di [{os.path.basename(pdf_path[0])}] nella cartella \"{os.path.basename(root)}\" non ha prodotto risultati, probabilmente il file è rovinato\n")
+            continue
+        risultati,(pres,fer,month) = ret
+        if month is not None or pres is not None or fer is not None:
+            pf_risultati.append((month,pres,fer))
+        else:
+            #pdf_path[0]
+            log(f"nel file [{os.path.basename(pdf_path[0])}] della cartella \"{os.path.basename(root)}\" non è stato possibile rilevare il mese o le presenze o le ferie\n")
+            print(f"ATTENZIONE: nel file {pdf_path[0]} non è stato possibile rilevare il mese o le presenze o le ferie")
         #ws.append([f"Presenze: {month}", pres, "Ferie:", fer])
-        if len(risultati)==0:
-            print(f"ATTENZIONE: il file [{pdf_path[0]}] non ha prodotto risultati")
-        risultati_cartella.extend(risultati)
+        if risultati is None:
+            #pdf_path[0]
+            log(f"il file [{os.path.basename(pdf_path)}] nella cartella \"{os.path.basename(root)}\" non ha prodotto risultati, anche se il file è stato letto\n")
+            print(f"ATTENZIONE: il file [{pdf_path[0]}] non ha prodotto risultati, anche se il file è stato letto")
+        else:
+            risultati_cartella.extend(risultati)
     pf_risultati_ordinati = sorted(pf_risultati, key=lambda x: mese_a_numero(x[0]))
     for mese,pres,fer in pf_risultati_ordinati:
         ws.append([f"Presenze {mese}:", pres, f"Ferie {mese}:", fer])
     if conta<12:
         print("ATTENZIONE: sono stati elaborati meno di 12 file")
+        log(f"nella cartella \"{os.path.basename(root)}\" sono stati elaborati meno di 12 file\nverifica che ci siano tutti i file\n")
     elif conta==12:
+        log(f"nella cartella \"{os.path.basename(root)}\" sono stati elaborati 12 file\nverifica che la tredicesima sia all'interno di uno dei file o che ci siano tutti i file\n")
         print("ATTENZIONE: sono stati elaborati 12 files, verifica che:\nla tredicesima sia segnata all'interno di uno dei file o che ci siano tutti i file")
     else:
         print("file elaborati:",conta)
@@ -402,7 +436,7 @@ for root, dirs, files in os.walk(cartella_pdf):
     for pagina, mese, parola,valore,descrizione in risultati_ordinati:
         if start_row_for_year is None:
             start_row_for_year = ws.max_row + 1  # Set the starting row for the current year
-        ws.append([mese, pagina, parola,descrizione, float(valore.replace(",","."))])
+        ws.append([mese, str(pagina), parola,descrizione, float(valore.replace(",","."))])
         cell = ws.cell(row=ws.max_row,column=5)
         if str(valore).startswith("-"):
             cell.fill = red_fill
