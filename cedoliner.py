@@ -56,11 +56,46 @@ def mese_a_numero(mese):
 #            miglior_match = elemento
 #    
 #    return miglior_match, massimo_ratio
+def deduci_mese_da_nome_file(pdf_path,anno,isnoloop):
+    tn=os.path.splitext(os.path.basename(pdf_path))[0]
+    maybe_mese=tn.split()
+    no_ref=False
+    mese=None
+    for mnth in mese_anno_ref:
+        if mnth.lower() in [mese.lower() for mese in maybe_mese]:
+            mese=mnth
+            print("rilevato:",mese,anno)
+            break
+    if mese is None:
+        stripname=tn.replace(" ","")
+        stripname=stripname.replace(anno,"")
+        p=stripname.lower().find("cedolino")
+        if p>-1:
+            stripname=stripname[p+len("cedolino"):]
+        stripname=stripname.replace("-","")
+        stripname=stripname.replace("_","")
+        p=stripname.find(".")
+        if p>-1:
+            stripname=stripname[:p]
+        solo_mese = "".join(c for c in stripname if c.isdigit())
+        if solo_mese!="":
+            try:
+                mese=mese_anno_ref[int(solo_mese)-1]
+                print("dedotto:",mese,anno)
+            except:
+                no_ref=True
+        else:
+            no_ref=True
+    if no_ref:
+        if isnoloop and mese is None:
+            print(f"ATTENZIONE: impossibile rilevare il mese dal nome del file,\nverificare il nome del file per {pdf_path}")
+    return mese
 
 def analizza_cedolino(pdf_path, anno, parole_chiave):#, pattern_codici):
     risultati = []
     got_ref=False
     mese = None
+    mese_rilevato=None
     ispdf=True
     """questa parte ricerca il mese e l'anno del cedolino"""
     #print("analisi del cedolino",pdf_path)
@@ -79,12 +114,19 @@ def analizza_cedolino(pdf_path, anno, parole_chiave):#, pattern_codici):
                                         mese_anno=riga[n:]
                                         if (mese_anno.split()[1]==anno)or(mese_anno[-4:]==anno):
                                             n=len(parola)
-                                            mese=mese_anno[:n]
-                                            if pdf_path.lower().find(mese.lower())>-1:
+                                            mese_rilevato=mese_anno[:n]
+                                            if pdf_path.lower().find(mese_rilevato.lower())>-1:
                                                 #anno=mese_anno[n:]
+                                                mese=mese_rilevato
                                                 print("elaborazione di",mese,anno)
                                                 got_ref=True
                                                 break
+                                            else:
+                                                mese=deduci_mese_da_nome_file(pdf_path,anno,False)
+                                                if mese is not None:
+                                                    got_ref=True
+                                                    break
+
     except Exception as e:
             print(f"Errore nell'analisi del cedolino {pdf_path}: {e}")
             ispdf=False
@@ -92,36 +134,8 @@ def analizza_cedolino(pdf_path, anno, parole_chiave):#, pattern_codici):
     if ispdf:
         if not got_ref:
             print("fallback - nome mese da nome file")
-            tn=os.path.splitext(os.path.basename(pdf_path))[0]
-            maybe_mese=tn.split()
-            for mnth in mese_anno_ref:
-                if mnth.lower() in [mese.lower() for mese in maybe_mese]:
-                    mese=mnth
-                    print("rilevato:",mese,anno)
-                    break
-            if mese is None:
-                print("Impossibile rilevare il mese dal nome del file,\nsi procede con tentativi di mitigazione")
-                #mese=os.path.basename(pdf_path).split()[0]
-                stripname=tn.replace(" ","")
-                stripname=stripname.replace(anno,"")
-                p=stripname.lower().find("cedolino")
-                if p>-1:
-                    stripname=stripname[p+len("cedolino"):]
-                stripname=stripname.replace("-","")
-                stripname=stripname.replace("_","")
-                p=stripname.find(".")
-                if p>-1:
-                    stripname=stripname[:p]
-                solo_mese = "".join(c for c in stripname if c.isdigit())
-                if solo_mese!="":
-                    try:
-                        mese=mese_anno_ref[int(solo_mese)-1]
-                        print("dedotto:",mese,anno)
-                    except:
-                        print("ATTENZIONE: impossibile rilevare il mese dal nome del file,\nverificare il nome del file")
-                else:
-                    print("ATTENZIONE: impossibile rilevare il mese dal nome del file,\nverificare il nome del file")
-            
+            deduci_mese_da_nome_file(pdf_path,anno,True)
+
         """questa parte cerca i codici e le colonne in cui son scritti"""
         
         with pdfplumber.open(pdf_path) as pdf:
