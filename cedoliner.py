@@ -317,7 +317,8 @@ def analizza_cedolino(pdf_path, anno, parole_chiave):
                                             risultati.append((page_num, mese, parola, valore,descrizione))
                         if elaborateandquit:
                             break
-                    
+                    if not startelaborate:
+                        log(f"ATTENZIONE: nella pagina {page_num} del cedolino [{os.path.basename(pdf_path)}] nella cartella \"{anno}\" non mi è stato possibile trovare l'inizio dei codici, pertanto non sono stati prodotti risultati\n")
                     if lastcode == "":
                         tst=""
                         for it in risultati:
