@@ -48,6 +48,7 @@ def mese_a_numero(mese):
     return mesi.get(mese, 0)
 
 def log(testo, azzera_file=False):
+    """Scrive un messaggio di log sul file log.txt"""
     try:
         modalita = "w" if azzera_file else "a"
         with open("log.txt", modalita) as file_log:
@@ -66,6 +67,7 @@ def log(testo, azzera_file=False):
 #    
 #    return miglior_match, massimo_ratio
 def deduci_mese_da_nome_file(pdf_path,anno,isnoloop):
+    """Deduce il mese dal nome del file e lo ritorna, opera in maniera differente se è in loop o meno"""
     tn=os.path.splitext(os.path.basename(pdf_path))[0]
     maybe_mese=tn.split()
     no_ref=False
@@ -148,11 +150,11 @@ def analizza_cedolino(pdf_path, anno, parole_chiave):
     
     if ispdf:
         if not got_ref:
+            """se non è stato rilevato il mese dal cedolino, deducilo dal nome del file o assegna il nome del file"""
             print("fallback - nome mese da nome file")
             mese=deduci_mese_da_nome_file(pdf_path,anno,True)
 
         """questa parte cerca i codici e le colonne in cui son scritti"""
-        
         with pdfplumber.open(pdf_path) as pdf:
             totcoddesc=[]
             #print(f"totcoddesc {totcoddesc}")
@@ -161,22 +163,16 @@ def analizza_cedolino(pdf_path, anno, parole_chiave):
                 tables = page.extract_tables()
                 stopiter=False
                 lastcode=""
-                #non serve enumerare le tabelle, basta che siano presenti
-                #for table_idx, table in enumerate(tables, start=1):
                 for table in tables:
-                    if table:  # Se la tabella non è vuota
-                        #print(f"Pagina {page_num}, Tabella {table_idx}:\n")
+                    if table:
                         if not stopiter:  # Se la tabella non è vuota e non è già stata trovata
                             for riga in table:
-                                #print(f"riga di tabella: {riga}")
                                 coddesc=[]
                                 #qualche cedolino è formattato diversamente, quindi devo rimuovere i valori nulli
                                 newriga=[]
                                 for item in riga:
                                     if item is not None:
                                         newriga.append(item)
-                                #print(f"newriga: {newriga}")
-                                #if riga[1]!=None:
                                 try:
                                     elementir0=newriga[0].split("\n")
                                     elementir1=newriga[1].split("\n")
@@ -191,7 +187,6 @@ def analizza_cedolino(pdf_path, anno, parole_chiave):
                                                 lastcode=elementir0[len(elementir0)-1]
                                             i+=1
                                         if coddesc!=[]:
-                                            ##print(f"coddesc {coddesc}")
                                             totcoddesc.extend(coddesc)
                                 except AttributeError:
                                     #di solito è quando trova un None, quindi non è un problema 
@@ -245,14 +240,12 @@ def analizza_cedolino(pdf_path, anno, parole_chiave):
                                             #print("Nessun giorno di ferie\n")
                                             ferie="0"
                 if lastcode == "":
-                    #pdf_path
                     log(f"### la pagina {page_num} del cedolino [{os.path.basename(pdf_path)}] nella cartella \"{anno}\" potrebbe aver prodotto risultati inattesi, verificare")
                     #print(f"ATTENZIONE: nessun ultimo codice rilevato nella pagina {page_num} del cedolino {pdf_path}")                           
                 if testo:
                     startelaborate=False
                     elaborateandquit=False
                     righe = testo.split("\n")
-                    #print(f"Testo pagina {page_num}:\n{righe}")
                     for numr,riga in enumerate(righe):
                         if not startelaborate:
                             if riga.lower().replace(" ","").find("cod.voce")>-1:
@@ -263,24 +256,19 @@ def analizza_cedolino(pdf_path, anno, parole_chiave):
                         if startelaborate:
                             if lastcode!="":
                                 if lastcode in riga:
-                                    #print(f"Riga con lastcode {lastcode}: {riga}")
                                     try:
                                         if lastcode in righe[numr+1]:
-                                            #print(f"Riga successiva con lastcode {lastcode}: {righe[numr+1]}")
+                                            #assicuriamoci che non ci sia lo stesso valore nella riga dopo
                                             pass
                                         else:
                                             elaborateandquit=True #non serve cercare oltre
                                     except IndexError:
                                         elaborateandquit=True #non serve cercare oltre
-                            #print(f"riga di testo: {riga}")
-                            #if any(parola in riga for parola in parole_chiave):
                             for parola in parole_chiave:
-                                #if parola.lower() in riga.lower(): sono numeri non serve il lower
                                 if parola in riga:
-                                    #print(f"Parola chiave {parola} trovata in riga: {riga}")
                                     words=riga.split()
                                     if parola in words:
-
+                                        """questo if ci assicura che il codice da cercare non faccia parte di un numero più lungo"""
                                 #decommenta per stampare a schermo le righe estratte
                                 #print(f"Riga: {riga}")
                                 #for parola in parole_chiave:
@@ -338,7 +326,6 @@ def analizza_cedolino(pdf_path, anno, parole_chiave):
                         log(f"### valori della pagina {page_num} inseriti:\n{tst}\n")
                 #    print(f"ATTENZIONE: nessun ultimo codice rilevato nella pagina {page_num} del cedolino {pdf_path}")
             if risultati == []:
-                #pdf_path
                 log(f"il file [{os.path.basename(pdf_path)}] nella cartella \"{anno}\" non ha prodotto risultati\n")
                 print(f"ATTENZIONE: il file {pdf_path} non ha prodotto risultati")
         if len(totcoddesc)>0:
@@ -371,19 +358,15 @@ for root, dirs, files in os.walk(cartella_pdf):
         ret = analizza_cedolino(pdf_path[0], pdf_path[1], parole_chiave)#, pattern_codici)
         if ret == (None, (None, None, None)):
             print(f"ATTENZIONE: l'analisi di [{pdf_path[0]}] non ha prodotto risultati")
-            #pdf_path[0]
             log(f"l'analisi di [{os.path.basename(pdf_path[0])}] nella cartella \"{os.path.basename(root)}\" non ha prodotto risultati, probabilmente il file è rovinato\n")
             continue
         risultati,(pres,fer,month) = ret
         if month is not None or pres is not None or fer is not None:
             pf_risultati.append((month,pres,fer))
         else:
-            #pdf_path[0]
             log(f"nel file [{os.path.basename(pdf_path[0])}] della cartella \"{os.path.basename(root)}\" non è stato possibile rilevare il mese o le presenze o le ferie\n")
             print(f"ATTENZIONE: nel file {pdf_path[0]} non è stato possibile rilevare il mese o le presenze o le ferie")
-        #ws.append([f"Presenze: {month}", pres, "Ferie:", fer])
         if risultati is None:
-            #pdf_path[0]
             log(f"il file [{os.path.basename(pdf_path)}] nella cartella \"{os.path.basename(root)}\" non ha prodotto risultati, anche se il file è stato letto\n")
             print(f"ATTENZIONE: il file [{pdf_path[0]}] non ha prodotto risultati, anche se il file è stato letto")
         else:
