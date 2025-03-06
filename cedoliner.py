@@ -389,8 +389,9 @@ for root, dirs, files in os.walk(cartella_pdf):
         if start_row_for_year is None:
             start_row_for_year = ws.max_row + 1  # Set the starting row for the current year
         if len(valore)>6:
-            valore.replace(".","")
-        val = float(valore.replace(",","."))
+            val = float(valore.replace(".","").replace(",","."))
+        else:
+            val = float(valore.replace(",","."))
         ws.append([mese, str(pagina), parola,descrizione, val])
         cell = ws.cell(row=ws.max_row,column=5)
         if str(valore).startswith("-"):
