@@ -155,7 +155,10 @@ def analizza_cedolino(pdf_path, anno, parole_chiave):
             mese=deduci_mese_da_nome_file(pdf_path,anno,True)
 
         """questa parte cerca i codici e le colonne in cui son scritti"""
+
         with pdfplumber.open(pdf_path) as pdf:
+            presfound=False
+            ferfound=False
             totcoddesc=[]
             #print(f"totcoddesc {totcoddesc}")
             for page_num, page in enumerate(pdf.pages, start=1):
@@ -167,6 +170,7 @@ def analizza_cedolino(pdf_path, anno, parole_chiave):
                     if table:
                         if not stopiter:  # Se la tabella non è vuota e non è già stata trovata
                             for riga in table:
+                                """questa parte cerca i codici e le relative descrizioni"""
                                 coddesc=[]
                                 #qualche cedolino è formattato diversamente, quindi devo rimuovere i valori nulli
                                 newriga=[]
@@ -196,12 +200,14 @@ def analizza_cedolino(pdf_path, anno, parole_chiave):
                                     #di solito rileva un codice altrove, quindi non è un problema
                                     pass
                         if page_num==1:
+                            """questa parte cerca le presenze e le ferie nella prima pagina"""
                             colonne = list(zip(*table))
                             for col_idx, colonna in enumerate(colonne, start=1):
                                 listacolonna=[]
                                 for item in colonna:
                                     if item is not None:
                                         listacolonna.append(item)
+                                #print(f"Colonna {col_idx}: {listacolonna}")
                                 # uncomment these lines if needed
                                 #if listacolonna[0]=="Trattenute":
                                 #    trattenute=listacolonna[1].split("\n")
@@ -216,6 +222,8 @@ def analizza_cedolino(pdf_path, anno, parole_chiave):
                                     i=0
                                     while i < len(listacolonna):
                                         if listacolonna[i]=="Presenze":
+                                            presfound=True
+                                            #print("Presenze trovate")
                                             if listacolonna[i+1]:
                                                 if listacolonna[i+1].isnumeric():
                                                     presenze=listacolonna[i+1]
@@ -227,8 +235,13 @@ def analizza_cedolino(pdf_path, anno, parole_chiave):
                                                 #print("Nessuna presenza\n")
                                                 presenze="0"
                                         i+=1
+                                    #if not presfound:
+                                    #    print(f"Attenzione: colonna presenze non trovata per il mese {mese} {anno}\n")
+                                    #    presenze="0"
                                 else:
                                     if listacolonna[0]=="Ferie":
+                                        ferfound=True
+                                        #print("Ferie trovate")
                                         if listacolonna[1]:
                                             if listacolonna[1].isnumeric():
                                                 ferie=listacolonna[1]
@@ -239,6 +252,8 @@ def analizza_cedolino(pdf_path, anno, parole_chiave):
                                         else:
                                             #print("Nessun giorno di ferie\n")
                                             ferie="0"
+                                if presfound and ferfound:
+                                    break
                 if lastcode == "":
                     log(f"### la pagina {page_num} del cedolino [{os.path.basename(pdf_path)}] nella cartella \"{anno}\" potrebbe aver prodotto risultati inattesi, verificare")
                     #print(f"ATTENZIONE: nessun ultimo codice rilevato nella pagina {page_num} del cedolino {pdf_path}")                           
@@ -326,6 +341,12 @@ def analizza_cedolino(pdf_path, anno, parole_chiave):
                                 tst+=f"{it}\n"
                         log(f"### valori della pagina {page_num} inseriti:\n{tst}\n")
                 #    print(f"ATTENZIONE: nessun ultimo codice rilevato nella pagina {page_num} del cedolino {pdf_path}")
+            if not presfound:
+                presenze="0"
+                print(f"Attenzione: colonna presenze non trovata per il mese {mese} {anno}\n")
+            if not ferfound:
+                ferie="0"
+                print(f"Attenzione: colonna ferie non trovata per il mese {mese} {anno}\n")
             if risultati == []:
                 log(f"il file [{os.path.basename(pdf_path)}] nella cartella \"{anno}\" non ha prodotto risultati\n")
                 print(f"ATTENZIONE: il file {pdf_path} non ha prodotto risultati")
