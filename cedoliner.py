@@ -36,7 +36,7 @@ ws.append(["Mese", "Pagina", "Codice", "Descrizione", "Importo"])
 cartella_pdf = "cedolini"
 
 # Parole chiave o pattern da cercare
-parole_chiave = ["0169", "0170", "0964", "0965", "0966", "0967", "0968", "0987", "0988", "0991", "0992", "0790", "0791", "0412", "0421", "0100", "0101", "0102"]
+parole_chiave = ["0107", "0110", "0119", "0120", "0121", "0127", "0128", "0129", "0131", "0152", "0195", "0197", "0199", "0200", "0202", "0205", "0206", "0207", "0210", "0211", "0267", "0268", "0269", "0270", "0299", "0350", "0351", "0352", "0353", "0362", "0363", "0364", "0412", "0421", "0423", "0457", "0470", "0496", "0576", "0578", "0579", "0584", "0686", "0687", "0AA1", "0AA2", "0E99"]
 mese_anno_ref = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"]#, "Tredicesima", "Quattordicesima"]
 
 def mese_a_numero(mese):
