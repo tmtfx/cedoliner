@@ -407,6 +407,9 @@ for root, dirs, files in os.walk(cartella_pdf):
     risultati_ordinati = sorted(risultati_cartella, key=lambda x: mese_a_numero(x[1]))
 
     for pagina, mese, parola,valore,descrizione in risultati_ordinati:
+        #fix: con valore negativo dove il segno sta alla fine
+        if str(valore).endswith("-"):
+            valore = valore[-1] + valore[:-1]
         if start_row_for_year is None:
             start_row_for_year = ws.max_row + 1  # Set the starting row for the current year
         if len(valore)>6:
